@@ -2,6 +2,6 @@
 
 Шейко Андрій
 
-Мова програмування: С
+Тема 1: Правила оформлення програмного коду (Code Convention): С
 
-Методи: 157 - Decompose Conditional; 160 - Consolidate Duplicate Conditional Fragments; 139- Substitute Algorithm.
+Тема 2: Методи рефакторингу коду (Refactoring Methods): 157 - Decompose Conditional (Декомпозиція умов); 160 - Consolidate Duplicate Conditional Fragments (Об’єднання дубльованих частин умов); 139 - Substitute Algorithm (Заміна алгоритму).
