@@ -1,0 +1,419 @@
+МІНІСТЕРСТВО ОСВІТИ ТА НАУКИ УКРАЇНИ 
+Харківський національний університет радіоелектроніки 
+
+
+
+Кафедра ПІ 
+
+
+
+ЗВІТ 
+з лабораторної роботи №2 з
+ дисципліни “Аналіз та рефакторинг коду” 
+на тему: “Розробка бази даних для серверної частини програмної системи та прикладного програмного інтерфейсу (API)” 
+
+
+
+
+
+
+Виконав: 								Перевірив:
+ст. гр. ПЗПІ-23-7 							Дашенков Д. С.
+ШейкоА.О. 
+
+
+
+
+
+
+Харків 2025
+2 РОЗРОБКА БАЗИ ДАНИХ ДЛЯ СЕРВЕРНОЇ ЧАСТИНИ ПРОГРАМНОЇ СИСТЕМИ ТА ПРИКЛАДНОГО ПРОГРАМНОГО ІНТЕРФЕЙСУ (API)
+
+Мета роботи: 
+Ознайомитися з процесом розробки серверної частини програмної системи Smart Room, включаючи проєктування бази даних, створення прикладного програмного інтерфейсу (API) для взаємодії з клієнтами, а також тестування коректності їхньої взаємодії. Отримати практичні навички використання UML та ER-діаграм, ORM та системи контролю версій Git
+
+2. 1 Завдання
+На лабораторній роботі №2 потрібно розробити базу даних для серверної частини програмної системи та прикладного програмного інтерфейсу.
+
+2.2 Хід роботи
+
+2.1.1 Опис архітектури програмної системи
+Програмна система Smart Room побудована за клієнт-серверною архітектурою та складається з таких компонентів:
+•	серверна частина: забезпечує обробку запитів користувачів та робить зберігання даних у базі даних (ASP.NET Web API)
+•	база даних (SQLite)
+•	клієнтські застосунки: включає веб-версію (React) та IoT клієнт
+Серверна частина відповідає за прийом, обробку та збереження сенсорних даних, а також надання доступу до цих даних через REST API. Клієнтські застосунки взаємодіють із сервером за допомогою HTTP-запитів у форматі JSON.
+
+2.1.2 Моделі даних та зв’язки
+Основною сутністю системи є SensorData, яка зберігає:
+•	значення температури
+•	значення вологості
+•	рівень освітленості
+•	дату та час створення запису
+Між сутностями в поточній реалізації використовується проста структура без складних зв’язків, що відповідає вимогам MVP-версії системи.
+namespace SmartRoomBackend.Models
+{
+    public class SensorData
+    {
+        public int Id { get; set; }
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public int LightLevel { get; set; }       //показник світла (вкл\викл)
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+}
+Код 2.1.2.1 – Фрагмент коду основною сутність системи SensorData
+
+2.1.3 UML діаграма прецедентів серверної частини
+UML діаграма прецедентів відображає основні сценарії використання серверної частини такі як:
+Актори:
+•	IoT клієнт
+•	Веб-клієнт
+•	Адміністратор
+Основні прецеденти:
+•	передавання сенсорних даних на сервер
+•	отримання поточних показників
+•	отримання історії показників
+•	керування пристроями (освітлення)
+•	адміністрування системи
+ 
+Рисунок 2.1.3 - UML діаграма
+
+2.1.4 ER-діаграма даних
+ER-діаграма описує структуру бази даних Smart Room та наочно відображає структуру таблиц та атрибутів, що використовуються для зберігання сенсорних даних
+Сутність Sensors:
+•	Id (Primary Key);
+•	Temperature;
+•	Humidity;
+•	LightLevel;
+•	CreatedAt.
+
+
+ 
+Рисунок 2.1.4 - ER-діаграма
+
+2.1.5 Проєктування бази даних та нормалізація
+На основі ER-діаграми була спроєктована база даних SQLite.
+Нормалізація:
+•	1NF: всі поля мають атомарні значення
+•	2NF: всі неключові атрибути повністю залежать від первинного ключа
+•	3NF: відсутні транзитивні залежності між атрибутами
+ 
+Рисунок 2.1.5 – Проектування та нормалізація бд
+
+2.1.6 Діаграма структури бази даних
+Діаграма структури БД відображає:
+•	таблицю Sensors
+•	первинний ключ Id
+•	типи даних для кожного поля
+•	обмеження цілісності
+Діаграма створена для візуального відображення структури збереження даних.
+
+
+ 
+Рисунок 2.1.6 - Діаграма структури бази даних
+
+2.1.7 Реалізація доступу до БД (ORM)
+Для роботи з базою даних використовується Entity Framework Core як ORM
+Фрагмент коду DbContext:
+namespace SmartRoomBackend.Data
+{
+    using SmartRoomBackend.Models;
+    using Microsoft.EntityFrameworkCore;
+
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) 
+        {
+        }
+
+        public DbSet<SensorData> Sensors { get; set; } // ТАблица БД
+    }
+}
+Код 2.1.7 - Фрагмент коду DbContext
+
+ORM забезпечує зручну реалізацію CRUD-операцій та ізоляцію логіки роботи з БД
+
+2.1.8 CRUD-операції
+Для сутності SensorData реалізовано повний набір CRUD-операцій:
+•	Create: додавання нових сенсорних даних
+•	Read: отримання поточних та історичних значень
+•	Update: (опціонально) оновлення записів
+•	Delete: (опціонально) видалення записів
+namespace SmartRoomBackend.Controllers
+{
+    using SmartRoomBackend.Data;
+    using SmartRoomBackend.Models;
+    using Microsoft.AspNetCore.Mvc;
+    using Microsoft.EntityFrameworkCore;
+
+    [ApiController]
+    [Route("api/sensors")]
+    public class SensorsController : ControllerBase
+    {
+        private readonly AppDbContext _context;
+
+        public SensorsController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // POST api/sensors:
+        [HttpPost]
+        public async Task<IActionResult> Create(SensorData data)
+        {
+            _context.Sensors.Add(data);
+            await _context.SaveChangesAsync();
+            return Ok(data);
+        }
+
+        // GET api/sensors/latest:
+        [HttpGet("latest")]
+        public async Task<IActionResult> GetLatest()
+        {
+            var latest = await _context.Sensors
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            return Ok(latest);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, SensorData updatedData)
+        {
+            var data = await _context.Sensors.FindAsync(id);
+
+            if (data == null)
+                return NotFound();
+
+            data.Temperature = updatedData.Temperature;
+            data.Humidity = updatedData.Humidity;
+            data.LightLevel = updatedData.LightLevel;
+
+            await _context.SaveChangesAsync();
+            return Ok(data);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var data = await _context.Sensors.FindAsync(id);
+
+            if (data == null)
+                return NotFound();
+
+            _context.Sensors.Remove(data);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+
+        // GET api/sensors/history:
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory(
+            DateTime from,
+            DateTime to)
+        {
+            var data = await _context.Sensors
+                .Where(x => x.CreatedAt >= from && x.CreatedAt <= to)
+                .OrderBy(x => x.CreatedAt)
+                .ToListAsync();
+
+            return Ok(data);
+        }
+    }
+}
+Код 2.1.8.1 – Фрагмент коду CRUD-операції
+
+2.1.9 Тип API та ендпоінти
+Для взаємодії серверної частини з клієнтами використовується REST API
+Основні ендпоінти:
+   Метод	Endpoint	Опис
+   POST	 /api/sensors	лодавання сенсорних даних
+   GET      	/api/sensors/latest	отримання останніх значень
+   GET	/api/sensors/history	отримання історії даних
+   POST	/api/light	керування освітленням
+
+ 
+Рисунок 2.1.9 - Частина документації в Swagger
+2.1.10 Специфікація API
+POST /api/sensors
+Запит:
+ 
+Рисунок 2.1.10.1 - Специфікація API
+Відповідь: 200 - OK
+
+GET /api/sensors/latest
+Відповідь:
+ 
+Рисунок 2.1.10.2 – відповідь
+
+2.1.11 Програмна реалізація API, LightController та Program.cs
+Фрагмент контролера:
+[ApiController]
+[Route("api/sensors")]
+public class SensorsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public SensorsController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // POST api/sensors:
+    [HttpPost]
+    public async Task<IActionResult> Create(SensorData data)
+    {
+        _context.Sensors.Add(data);
+        await _context.SaveChangesAsync();
+        return Ok(data);
+    }
+
+    // GET api/sensors/latest:
+    [HttpGet("latest")]
+    public async Task<IActionResult> GetLatest()
+    {
+        var latest = await _context.Sensors
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        return Ok(latest);
+    }
+Код 2.1.11.1 – фрагмент коду API контролер
+
+namespace SmartRoomBackend.Controllers
+{
+    using Microsoft.AspNetCore.Mvc;
+
+    [ApiController]
+    [Route("api/light")]
+    public class LightController : ControllerBase
+    {
+        private static bool _isLightOn = false;
+        
+        // POST api/light:
+        [HttpPost]
+        public IActionResult SetLight([FromQuery] bool state)
+        {
+            _isLightOn = state;
+            return Ok(new { light = _isLightOn });
+        }
+
+        // GET api/light/status:
+        [HttpGet("status")]
+        public IActionResult GetStatus()
+        {
+            return Ok(new { light = _isLightOn });
+        }
+    }
+}
+Код 2.1.11.2 – Фрагмен коду LightController для світла
+
+using SmartRoomBackend.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=smartroom.db"));
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapControllers();
+
+app.Run();
+Код 2.1.11.3 – Фрагмент коду Program.cs
+
+2.1.12 Тестування серверної частини
+Тестування виконувалося шляхом:
+•	надсилання HTTP-запитів до API
+•	перевірки записів у базі даних
+•	перевірки відповідей серверної частини клієнтам
+Результати тестування підтвердили коректну роботу API та БД
+
+
+
+
+
+Висновки: у ході виконання лабораторної роботи було спроєктовано та реалізовано базу даних серверної частини системи Smart Room, створено REST API для взаємодії з клієнтами та перевірено коректність роботи серверної частини. Використання ORM Entity Framework Core забезпечило зручний доступ до БД (SQLlite) та підтримку CRUD-операцій
+
+Контрольні питання:
+1. Які функції виконує серверна частина системи?
+Прийом, обробка, збереження та надання доступу до даних через API.
+
+2. Які основні елементи містить ER-діаграма?
+Сутності, атрибути, первинні ключі та зв’язки.
+
+3. У чому різниця між REST та GraphQL API?
+REST використовує фіксовані ендпоінти, GraphQL — гнучкі запити.
+
+4. Які типи запитів використовуються для взаємодії з БД?
+GET, POST, PUT, DELETE.
+
+
+
+
+
+
+
+
+
+
+
+
+Додаток А
+Посилання на GitHub
+https://github.com/NureSheikoAndrii/smart-room-system/tree/main/SmartRoom%20Backend
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Додаток Б
+
+Послання на ютуб запис: https://youtu.be/7LugnL2MDpg
+
+Хронологія
+0:00 – Втсуп та архітектура системи
+2:00 – База даних, структура та нормалізація 
+3:23 – ORM (Entity Framework Core)
+4:15 – Створення бд у SQLlite
+6:25 – Ендпоінти та тестування
+11:16 – Взаємодія з кліенами, діаграма прецедентів
+12:09 – Висновки
